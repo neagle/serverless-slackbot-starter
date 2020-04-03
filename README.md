@@ -107,7 +107,9 @@ What can you do with a Slack bot? Let's create a Cocktail Bot to see some of Sla
 
 ### Create a `/randomCocktail` command
 
-Let's use a public API from [the Cocktail DB](https://www.thecocktaildb.com/api.php) to make a command that does something useful. (I have a generous standard of usefulness.)
+Let's use a public API from [the Cocktail DB](https://www.thecocktaildb.com/api.php)² to make a command that does something useful. (I have a generous standard of usefulness.)
+
+² For development purposes, their API can be used with a generic, public API key. If you want to use this in any kind of service that gets released, you'll need to create an account and get an actual key.
 
 - Create a new function and endpoint to get a random cocktail in `handler.js` and `serverless.yml`
 - Grab some way to make a get request in Node. A simple, convenient way to go is to make [a simple wrapper to work with Node's native http module using promises](https://github.com/neagle/serverless-slackbot-starter/blob/master/utils.js#L5-L27).
@@ -237,7 +239,7 @@ Getting a random cocktail isn't necessarily the most useful thing in the world: 
 
 Important concepts:
 
-- Useful modules: dotenv, @slack/web-api
+- Useful modules: dotenv, @slack/web-api, querystring
 - Adding scopes
 - Your bot's interactive endpoint
 

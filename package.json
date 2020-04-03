@@ -1,0 +1,20 @@
+{
+  "name": "widget",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@slack/web-api": "^5.8.0",
+    "dotenv": "^8.2.0",
+    "querystring": "^0.2.0",
+    "serverless": "^1.67.0"
+  },
+  "devDependencies": {
+    "serverless-offline": "^6.1.3"
+  }
+}

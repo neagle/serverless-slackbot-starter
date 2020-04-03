@@ -1,0 +1,30 @@
+service: widget
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+
+functions:
+  hello:
+    handler: handler.hello
+    events:
+      - http: POST hello
+  goodbye:
+    handler: handler.goodbye
+    events:
+      - http: POST goodbye
+  randomCocktail:
+    handler: handler.randomCocktail
+    events:
+      - http: POST randomCocktail
+  cocktails:
+    handler: handler.cocktails
+    events:
+      - http: POST cocktails
+  interactive:
+    handler: handler.interactive
+    events:
+      - http: POST interactive
+
+plugins:
+  - serverless-offline

@@ -1,4 +1,4 @@
-service: widget
+service: serverlessSlackbotStarter
 
 provider:
   name: aws

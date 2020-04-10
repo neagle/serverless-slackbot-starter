@@ -7,21 +7,21 @@ const COCKTAIL_DB_API = "https://www.thecocktaildb.com/api/json/v1/1";
 
 const web = new WebClient(process.env.BOT_USER_OAUTH_TOKEN);
 
-module.exports.hello = async event => {
+module.exports.hello = async (event) => {
   return {
     statusCode: 200,
-    body: "Well, _hello_ there!"
+    body: "Well, _hello_ there!",
   };
 };
 
-module.exports.goodbye = async event => {
+module.exports.goodbye = async (event) => {
   return {
     statusCode: 200,
-    body: "Goodbyeeeee!"
+    body: "Goodbyeeeee!",
   };
 };
 
-module.exports.randomCocktail = async event => {
+module.exports.randomCocktail = async (event) => {
   const cocktail = JSON.parse(
     await getContent(`${COCKTAIL_DB_API}/random.php`)
   );
@@ -29,68 +29,94 @@ module.exports.randomCocktail = async event => {
   const [drink] = cocktail.drinks;
 
   const recipe = {
-    blocks: drinkBlocks(parseDrink(drink))
+    blocks: drinkBlocks(parseDrink(drink)),
   };
 
   return { statusCode: 200, body: JSON.stringify(recipe) };
 };
 
-module.exports.cocktails = async (event, context, callback) => {
+module.exports.cocktails = async (event) => {
   const body = querystring.parse(event.body);
 
-  // Respond as quickly as possible with a success code
-  // @see https://api.slack.com/events-api#responding_to_events
-  callback(null, { statusCode: 200, body: "One sec..." });
-
-  // Generate a modal using Block Kit
-  // @see https://api.slack.com/block-kit
-  const viewPayload = {
-    trigger_id: body.trigger_id,
-    view: {
-      type: "modal",
-      callback_id: "cocktail-search",
-      title: {
-        type: "plain_text",
-        text: "Cocktail DB"
-      },
-      submit: {
-        type: "plain_text",
-        text: "Submit"
-      },
-      blocks: [
-        {
-          type: "section",
-          block_id: "introduction_text",
-          text: {
-            type: "mrkdwn",
-            text:
-              "Grab a quick cocktail recipe for the next virtual happy hour."
-          }
+  if (!body.text) {
+    // Generate a modal using Block Kit
+    // @see https://api.slack.com/block-kit
+    const viewPayload = {
+      trigger_id: body.trigger_id,
+      view: {
+        type: "modal",
+        callback_id: "cocktail-search",
+        title: {
+          type: "plain_text",
+          text: "Cocktail DB",
         },
-        {
-          type: "input",
-          block_id: "name-search",
-          label: {
-            type: "plain_text",
-            text: "Name search"
+        submit: {
+          type: "plain_text",
+          text: "Submit",
+        },
+        blocks: [
+          {
+            type: "section",
+            block_id: "introduction_text",
+            text: {
+              type: "mrkdwn",
+              text:
+                "Grab a quick cocktail recipe for the next virtual happy hour.",
+            },
           },
-          element: {
-            type: "plain_text_input",
-            action_id: "plain_input",
-            placeholder: {
+          {
+            type: "input",
+            block_id: "name_search",
+            label: {
               type: "plain_text",
-              text: "Enter a cocktail name"
-            }
-          }
-        }
-      ]
-    }
-  };
+              text: "Name search",
+            },
+            element: {
+              type: "plain_text_input",
+              action_id: "plain_input",
+              placeholder: {
+                type: "plain_text",
+                text: "Enter a cocktail name",
+              },
+            },
+          },
+        ],
+      },
+    };
 
-  web.views.open(viewPayload).catch(err => console.log("err", err));
+    web.views.open(viewPayload).catch((err) => console.log("err", err));
+
+    return { statusCode: 200 };
+  } else {
+    const drink = await searchForDrink(body.text);
+
+    if (drink) {
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          blocks: [
+            {
+              type: "section",
+              block_id: "response_text",
+              text: {
+                type: "mrkdwn",
+                text: `Here's the first match I found for ${body.text}:`,
+              },
+            },
+            ...drinkBlocks(drink),
+          ],
+        }),
+      };
+    } else {
+      return {
+        statusCode: 200,
+        body: `I couldn’t find any cocktails named "${body.text}."`,
+      };
+    }
+  }
 };
 
-module.exports.interactive = async event => {
+module.exports.interactive = async (event) => {
   const body = querystring.parse(event.body);
   const payload = JSON.parse(body.payload);
 
@@ -99,17 +125,11 @@ module.exports.interactive = async event => {
     payload.view.callback_id === "cocktail-search"
   ) {
     const searchTerm =
-      payload.view.state.values["name-search"].plain_input.value;
+      payload.view.state.values["name_search"].plain_input.value;
 
-    const search = await getContent(
-      `${COCKTAIL_DB_API}/search.php?s=${searchTerm}`
-    );
+    const drink = await searchForDrink(searchTerm);
 
-    const { drinks } = JSON.parse(search);
-
-    if (drinks && drinks.length) {
-      const drink = drinks[0];
-
+    if (drink) {
       web.chat.postMessage({
         channel: payload.user.id,
         blocks: [
@@ -118,21 +138,39 @@ module.exports.interactive = async event => {
             block_id: "response_text",
             text: {
               type: "mrkdwn",
-              text: `Here's the first match we found for ${searchTerm}:`
-            }
+              text: `Here's the first match I found for ${searchTerm}:`,
+            },
           },
-          ...drinkBlocks(parseDrink(drink))
-        ]
+          ...drinkBlocks(drink),
+        ],
       });
+
+      return {
+        statusCode: 200,
+      };
     } else {
-      web.chat.postMessage({
-        channel: payload.user.id,
-        text: `We couldn't find any matches for "${searchTerm}."`
-      });
+      const response = {
+        response_action: "errors",
+        errors: {
+          name_search: `I couldn’t find any matches for "${searchTerm}."`,
+        },
+      };
+      return { statusCode: 200, body: JSON.stringify(response) };
     }
   }
+};
 
-  return {
-    statusCode: 200
-  };
+const searchForDrink = async (searchTerm) => {
+  const search = await getContent(
+    `${COCKTAIL_DB_API}/search.php?s=${searchTerm}`
+  );
+
+  const { drinks } = JSON.parse(search);
+
+  if (drinks && drinks.length) {
+    const drink = drinks[0];
+    return parseDrink(drink);
+  } else {
+    return undefined;
+  }
 };
